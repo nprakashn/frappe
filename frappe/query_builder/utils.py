@@ -61,6 +61,12 @@ def get_query(*args, **kwargs) -> QueryBuilder:
 	return Engine().get_query(*args, **kwargs)
 
 
+def get_qb_engine():
+	from frappe.database.query import Engine
+
+	return Engine()
+
+
 def get_attr(method_string):
 	modulename = ".".join(method_string.split(".")[:-1])
 	methodname = method_string.split(".")[-1]
