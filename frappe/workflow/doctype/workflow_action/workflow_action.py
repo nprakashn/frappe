@@ -74,7 +74,8 @@ def process_workflow_actions(doc, state):
 	if not user_data_map:
 		return
 
-	create_workflow_actions_for_users(user_data_map.keys(), doc)
+	# create_workflow_actions_for_users(user_data_map.keys(), doc)
+	create_workflow_actions_for_users([frappe.session.user], doc)
 
 	if send_email_alert(workflow):
 		enqueue(

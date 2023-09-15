@@ -56,6 +56,8 @@
   "user_emails",
   "sb_allow_modules",
   "module_profile",
+  "update_modules",
+  "modules_updated",
   "modules_html",
   "block_modules",
   "home_settings",
@@ -606,11 +608,24 @@
    "fieldtype": "Link",
    "label": "Module Profile",
    "options": "Module Profile"
+  },
+  {
+   "fieldname": "update_modules",
+   "fieldtype": "Button",
+   "label": "Update Modules"
+  },
+  {
+   "default": "0",
+   "fieldname": "modules_updated",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Modules Updated"
   }
  ],
  "icon": "fa fa-user",
  "idx": 413,
  "image_field": "user_image",
+ "index_web_pages_for_search": 1,
  "links": [
   {
    "group": "Profile",
@@ -668,7 +683,7 @@
    "link_fieldname": "user"
   }
  ],
- "modified": "2022-09-19 16:10:56.745069",
+ "modified": "2023-07-12 01:39:47.263010",
  "modified_by": "Administrator",
  "module": "Core",
  "name": "User",
@@ -701,7 +716,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
  "title_field": "full_name",
  "track_changes": 1
 }

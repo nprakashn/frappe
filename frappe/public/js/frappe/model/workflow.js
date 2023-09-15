@@ -38,7 +38,8 @@ frappe.workflow = {
 	},
 	get_document_state: function(doctype, state) {
 		frappe.workflow.setup(doctype);
-		return frappe.get_children(frappe.workflow.workflows[doctype], "states", {state:state})[0];
+		//return frappe.get_children(frappe.workflow.workflows[doctype], "states", {state:state})[0];
+		return frappe.get_children(frappe.workflow.workflows[doctype], "states", {state:state});
 	},
 	is_self_approval_enabled: function(doctype) {
 		return frappe.workflow.workflows[doctype].allow_self_approval;
@@ -55,11 +56,19 @@ frappe.workflow = {
 			var state = doc[state_fieldname] ||
 				frappe.workflow.get_default_state(doctype, doc.docstatus);
 
-			var allow_edit = state ? frappe.workflow.get_document_state(doctype, state) && frappe.workflow.get_document_state(doctype, state).allow_edit : null;
+			//var allow_edit = state ? frappe.workflow.get_document_state(doctype, state) && frappe.workflow.get_document_state(doctype, state).allow_edit : null;
 
-			if(!frappe.user_roles.includes(allow_edit)) {
-				return true;
-			}
+			//if(!frappe.user_roles.includes(allow_edit)) {
+			//	return true;
+			//}
+			var allow_edit_roles = state ? frappe.workflow.get_document_state(doctype, state) && frappe.workflow.get_document_state(doctype, state) : null;
+			var allow_edit = true
+			if (allow_edit_roles) {
+		                $.each(allow_edit_roles, function(i, d){
+		                    if(frappe.user_roles.includes(d.allow_edit)) {
+		                        allow_edit = false                    }
+				})
+		                return allow_edit;            }
 		}
 		return false;
 	},

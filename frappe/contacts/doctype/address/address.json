@@ -34,6 +34,7 @@
    "options": "fa fa-map-marker"
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "address_title",
    "fieldtype": "Data",
    "label": "Address Title"
@@ -54,6 +55,7 @@
    "reqd": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "address_line2",
    "fieldtype": "Data",
    "label": "Address Line 2"
@@ -73,9 +75,11 @@
    "label": "County"
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "state",
    "fieldtype": "Data",
-   "label": "State/Province"
+   "label": "State/Province",
+   "reqd": 1
   },
   {
    "fieldname": "country",
@@ -88,9 +92,11 @@
    "search_index": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "pincode",
    "fieldtype": "Data",
    "label": "Postal Code",
+   "reqd": 1,
    "search_index": 1
   },
   {
@@ -147,8 +153,9 @@
  ],
  "icon": "fa fa-map-marker",
  "idx": 5,
+ "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2020-10-21 16:14:37.284830",
+ "modified": "2023-07-12 14:09:24.236567",
  "modified_by": "Administrator",
  "module": "Contacts",
  "name": "Address",

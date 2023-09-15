@@ -886,6 +886,7 @@ export default class Grid {
 						});
 
 						me.frm.refresh_field(me.df.fieldname);
+						me.frm.script_manager.trigger(me.df.fieldname+"_upload_complete", me.doctype, me.name);
 						frappe.msgprint({ message: __('Table updated'), title: __('Success'), indicator: 'green' });
 					}
 				});

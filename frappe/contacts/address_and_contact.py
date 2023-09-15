@@ -19,9 +19,16 @@ def load_address_and_contact(doc, key=None):
 		["Dynamic Link", "link_name", "=", doc.name],
 		["Dynamic Link", "parenttype", "=", "Address"],
 	]
-	address_list = frappe.get_list("Address", filters=filters, fields=["*"], order_by="creation asc")
-	address_list = [a.update({"display": get_address_display(a)}) for a in address_list]
+	# address_list = frappe.get_list("Address", filters=filters, fields=["*"], order_by="creation asc")
+	# address_list = [a.update({"display": get_address_display(a)}) for a in address_list]
 
+	if doc.name != "SHOPIFY DIRECT - UP STORE":
+		address_list = frappe.get_all("Address", filters=filters, fields=["*"])
+		address_list = [a.update({"display": get_address_display(a)}) for a in address_list]
+	else:
+		address_list = frappe.get_all("Address", filters=filters, fields=["*"],order_by='creation desc',page_length=20)
+		address_list = [a.update({"display": get_address_display(a)}) for a in address_list]
+		
 	address_list = sorted(
 		address_list,
 		key=functools.cmp_to_key(

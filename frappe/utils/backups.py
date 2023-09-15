@@ -408,7 +408,7 @@ class BackupGenerator:
 			cmd_string = (
 				# Remember process of this shell and kill it if mysqldump exits w/ non-zero code
 				"self=$$; "
-				" ( {db_exc} --single-transaction --quick --lock-tables=false -u {user}"
+				" ( {db_exc} --single-transaction --quick --lock-tables=false --max_allowed_packet=512M -u {user}"
 				" -p{password} {db_name} -h {db_host} -P {db_port} {include} {exclude} || kill $self ) "
 				" | {gzip} >> {backup_path_db}"
 			)
