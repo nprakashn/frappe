@@ -11,7 +11,7 @@ from frappe.core.doctype.file import remove_file_by_url
 from frappe.desk.form.meta import get_code_files_via_hooks
 from frappe.modules.utils import export_module_json, get_doc_module
 from frappe.rate_limiter import rate_limit
-from frappe.utils import cstr, dict_with_keys, strip_html
+from frappe.utils import dict_with_keys, strip_html
 from frappe.website.utils import get_boot_data, get_comment_list, get_sidebar_items
 from frappe.website.website_generator import WebsiteGenerator
 
@@ -153,16 +153,12 @@ def get_context(context):
 			and not frappe.form_dict.name
 			and not frappe.form_dict.is_list
 		):
-			names = frappe.db.get_values(self.doc_type, {"owner": frappe.session.user}, pluck="name")
-			for name in names:
-				if self.condition:
-					doc = frappe.get_doc(self.doc_type, name)
-					if frappe.safe_eval(self.condition, None, {"doc": doc.as_dict()}):
-						context.in_view_mode = True
-						frappe.redirect(f"/{self.route}/{name}")
-				else:
-					context.in_view_mode = True
-					frappe.redirect(f"/{self.route}/{name}")
+			condition_json = json.loads(self.condition_json) if self.condition_json else []
+			condition_json.append(["owner", "=", frappe.session.user])
+			names = frappe.get_all(self.doc_type, filters=condition_json, pluck="name")
+			if names:
+				context.in_view_mode = True
+				frappe.redirect(f"/{self.route}/{names[0]}")
 
 		# Show new form when
 		# - User is Guest
@@ -201,6 +197,9 @@ def get_context(context):
 
 		context.boot = get_boot_data()
 		context.boot["link_title_doctypes"] = frappe.boot.get_link_title_doctypes()
+
+		context.webform_banner_image = self.banner_image
+		context.pop("banner_image", None)
 
 	def add_metatags(self, context):
 		description = self.meta_description
@@ -383,7 +382,7 @@ def get_web_form_module(doc):
 
 
 @frappe.whitelist(allow_guest=True)
-@rate_limit(key="web_form", limit=5, seconds=60)
+@rate_limit(limit=5, seconds=60)
 def accept(web_form, data):
 	"""Save the web form"""
 	data = frappe._dict(json.loads(data))
@@ -621,16 +620,14 @@ def get_link_options(web_form_name, doctype, allow_read_on_all_link_options=Fals
 
 		fields = ["name as value"]
 
-		title_field = frappe.db.get_value("DocType", doctype, "title_field", cache=1)
-		show_title_field_in_link = (
-			frappe.db.get_value("DocType", doctype, "show_title_field_in_link", cache=1) == 1
-		)
-		if title_field and show_title_field_in_link:
-			fields.append(f"{title_field} as label")
+		meta = frappe.get_meta(doctype)
+
+		if meta.title_field and meta.show_title_field_in_link:
+			fields.append(f"{meta.title_field} as label")
 
 		link_options = frappe.get_all(doctype, filters, fields)
 
-		if title_field and show_title_field_in_link:
+		if meta.title_field and meta.show_title_field_in_link:
 			return json.dumps(link_options, default=str)
 		else:
 			return "\n".join([doc.value for doc in link_options])

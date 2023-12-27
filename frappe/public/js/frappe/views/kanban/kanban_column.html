@@ -11,15 +11,17 @@
 				</svg>
 			</a>
 			<ul class="dropdown-menu" style="max-height: 300px; overflow-y: auto;">
-				<li><a class="dropdown-item" data-action="archive">{{ __("Archive") }}</a></li>
+				<!-- <li><a class="dropdown-item" data-action="archive">{{ __("Archive") }}</a></li> -->
 			</ul>
 		</div>
 	</div>
-	<div class="add-card">
-		<div class="ellipsis">
-			+ {{ __("Add {0}", [__(doctype)]) }}
-		</div>
-	</div>
+	{% if board_name != "Driver View" %}
+		<div class="add-card">
+			<div class="ellipsis">                
+				+ {{ __("Add {0}", [__(doctype)]) }}            
+			</div>        
+		</div>    
+	{% endif %}
 	<div class="kanban-card new-card-area">
 		<textarea name="title"></textarea>
 	</div>

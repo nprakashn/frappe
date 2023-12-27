@@ -827,15 +827,18 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 			frappe.model.is_numeric_field(df) ? "text-right" : "",
 		].join(" ");
 
-		const html_map = {
-			Subject: this.get_subject_html(doc),
-			Field: field_html(),
-		};
-		let column_html = html_map[col.type];
-
-		// listview_setting formatter
-		if (this.settings.formatters && this.settings.formatters[fieldname]) {
+		let column_html;
+		if (
+			this.settings.formatters &&
+			this.settings.formatters[fieldname] &&
+			col.type !== "Subject"
+		) {
 			column_html = this.settings.formatters[fieldname](value, df, doc);
+		} else {
+			column_html = {
+				Subject: this.get_subject_html(doc),
+				Field: field_html(),
+			}[col.type];
 		}
 
 		return `
@@ -1014,8 +1017,11 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 		link.dataset.doctype = this.doctype;
 		link.dataset.name = doc.name;
 		link.href = this.get_form_link(doc);
-		link.title = value.toString();
-		link.textContent = value.toString();
+		// "Text Editor" and some other fieldtypes can have html tags in them so strip and show text.
+		// If no text is found show "No Text Found in {Field Label}"
+		let textValue = frappe.utils.html2text(value);
+		link.title = textValue;
+		link.textContent = textValue;
 
 		return div.innerHTML;
 	}

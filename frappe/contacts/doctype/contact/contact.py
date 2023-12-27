@@ -16,13 +16,13 @@ class Contact(Document):
 			filter(None, [cstr(self.get(f)).strip() for f in ["first_name", "last_name"]])
 		)
 
-		if frappe.db.exists("Contact", self.name):
-			self.name = append_number_if_name_exists("Contact", self.name)
-
 		# concat party name if reqd
 		for link in self.links:
 			self.name = self.name + "-" + link.link_name.strip()
 			break
+
+		if frappe.db.exists("Contact", self.name):
+			self.name = append_number_if_name_exists("Contact", self.name)
 
 	def validate(self):
 		self.set_primary_email()
@@ -179,7 +179,9 @@ def invite_user(contact):
 @frappe.whitelist()
 def get_contact_details(contact):
 	contact = frappe.get_doc("Contact", contact)
-	out = {
+	contact.check_permission()
+
+	return {
 		"contact_person": contact.get("name"),
 		"contact_display": " ".join(
 			filter(None, [contact.get("salutation"), contact.get("first_name"), contact.get("last_name")])
@@ -190,7 +192,6 @@ def get_contact_details(contact):
 		"contact_designation": contact.get("designation"),
 		"contact_department": contact.get("department"),
 	}
-	return out
 
 
 def update_contact(doc, method):

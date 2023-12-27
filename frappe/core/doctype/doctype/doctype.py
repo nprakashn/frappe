@@ -16,6 +16,7 @@ from frappe import _
 from frappe.cache_manager import clear_controller_cache, clear_user_cache
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+from frappe.database import savepoint
 from frappe.database.schema import validate_column_length, validate_column_name
 from frappe.desk.notifications import delete_notification_count_for, get_filters_for
 from frappe.desk.utils import validate_route_conflict
@@ -244,8 +245,10 @@ class DocType(Document):
 
 		self.flags.update_fields_to_fetch_queries = []
 
-		if set(old_fields_to_fetch) != {df.fieldname for df in new_meta.get_fields_to_fetch()}:
-			for df in new_meta.get_fields_to_fetch():
+		new_fields_to_fetch = [df for df in new_meta.get_fields_to_fetch()]
+
+		if set(old_fields_to_fetch) != {df.fieldname for df in new_fields_to_fetch}:
+			for df in new_fields_to_fetch:
 				if df.fieldname not in old_fields_to_fetch:
 					link_fieldname, source_fieldname = df.fetch_from.split(".", 1)
 					link_df = new_meta.get_field(link_fieldname)
@@ -408,7 +411,9 @@ class DocType(Document):
 			if self.flags.in_insert:
 				self.run_module_method("after_doctype_insert")
 
+		self.sync_doctype_layouts()
 		delete_notification_count_for(doctype=self.name)
+
 		frappe.clear_cache(doctype=self.name)
 
 		# clear user cache so that on the next reload this doctype is included in boot
@@ -418,6 +423,17 @@ class DocType(Document):
 			self.sync_global_search()
 
 		clear_linked_doctype_cache()
+
+	@savepoint(catch=Exception)
+	def sync_doctype_layouts(self):
+		"""Sync Doctype Layout"""
+		doctype_layouts = frappe.get_all(
+			"DocType Layout", filters={"document_type": self.name}, pluck="name", ignore_ddl=True
+		)
+		for layout in doctype_layouts:
+			layout_doc = frappe.get_doc("DocType Layout", layout)
+			layout_doc.sync_fields()
+			layout_doc.save()
 
 	def setup_autoincrement_and_sequence(self):
 		"""Changes name type and makes sequence on change (if required)"""
@@ -728,6 +744,7 @@ class DocType(Document):
 						"read_only": 1,
 						"print_hide": 1,
 						"no_copy": 1,
+						"search_index": 1,
 					},
 				)
 
@@ -1505,22 +1522,12 @@ def validate_permissions_for_doctype(doctype, for_remove=False, alert=False):
 
 
 def clear_permissions_cache(doctype):
+	from frappe.cache_manager import clear_user_cache
+
 	frappe.clear_cache(doctype=doctype)
 	delete_notification_count_for(doctype)
-	for user in frappe.db.sql_list(
-		"""
-		SELECT
-			DISTINCT `tabHas Role`.`parent`
-		FROM
-			`tabHas Role`,
-			`tabDocPerm`
-		WHERE `tabDocPerm`.`parent` = %s
-			AND `tabDocPerm`.`role` = `tabHas Role`.`role`
-			AND `tabHas Role`.`parenttype` = 'User'
-		""",
-		doctype,
-	):
-		frappe.clear_cache(user=user)
+
+	clear_user_cache()
 
 
 def validate_permissions(doctype, for_remove=False, alert=False):

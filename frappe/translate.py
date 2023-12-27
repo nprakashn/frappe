@@ -15,7 +15,7 @@ import operator
 import os
 import re
 from contextlib import contextmanager
-from csv import reader
+from csv import reader, writer
 
 from babel.messages.extract import extract_python
 from babel.messages.jslexer import Token, tokenize, unquote_string
@@ -999,7 +999,6 @@ def write_csv_file(path, app_messages, lang_dict):
 	:param lang_dict: Full translated dict.
 	"""
 	app_messages.sort(key=lambda x: x[1])
-	from csv import writer
 
 	with open(path, "w", newline="") as msgfile:
 		w = writer(msgfile, lineterminator="\n")
@@ -1120,6 +1119,50 @@ def import_translations(lang, path):
 		write_translations_file(app, lang, full_dict)
 
 
+def migrate_translations(source_app, target_app):
+	"""Migrate target-app-specific translations from source-app to target-app"""
+	clear_cache()
+	strings_in_source_app = [m[1] for m in frappe.translate.get_messages_for_app(source_app)]
+	strings_in_target_app = [m[1] for m in frappe.translate.get_messages_for_app(target_app)]
+
+	strings_in_target_app_but_not_in_source_app = list(
+		set(strings_in_target_app) - set(strings_in_source_app)
+	)
+
+	languages = frappe.translate.get_all_languages()
+
+	source_app_translations_dir = os.path.join(frappe.get_pymodule_path(source_app), "translations")
+	target_app_translations_dir = os.path.join(frappe.get_pymodule_path(target_app), "translations")
+
+	if not os.path.exists(target_app_translations_dir):
+		os.makedirs(target_app_translations_dir)
+
+	for lang in languages:
+		source_csv = os.path.join(source_app_translations_dir, lang + ".csv")
+
+		if not os.path.exists(source_csv):
+			continue
+
+		target_csv = os.path.join(target_app_translations_dir, lang + ".csv")
+		temp_csv = os.path.join(source_app_translations_dir, "_temp.csv")
+
+		with open(source_csv) as s, open(target_csv, "a+") as t, open(temp_csv, "a+") as temp:
+			source_reader = reader(s, lineterminator="\n")
+			target_writer = writer(t, lineterminator="\n")
+			temp_writer = writer(temp, lineterminator="\n")
+
+			for row in source_reader:
+				if row[0] in strings_in_target_app_but_not_in_source_app:
+					target_writer.writerow(row)
+				else:
+					temp_writer.writerow(row)
+
+		if not os.path.getsize(target_csv):
+			os.remove(target_csv)
+		os.remove(source_csv)
+		os.rename(temp_csv, source_csv)
+
+
 def rebuild_all_translation_files():
 	"""Rebuild all translation files: `[app]/translations/[lang].csv`."""
 	for lang in get_all_languages():
@@ -1227,26 +1270,6 @@ def get_translations(source_text):
 
 
 @frappe.whitelist()
-def get_messages(language, start=0, page_length=100, search_text=""):
-	from frappe.frappeclient import FrappeClient
-
-	translator = FrappeClient(get_translator_url())
-	translated_dict = translator.post_api(
-		"translator.api.get_strings_for_translation", params=locals()
-	)
-
-	return translated_dict
-
-
-@frappe.whitelist()
-def get_source_additional_info(source, language=""):
-	from frappe.frappeclient import FrappeClient
-
-	translator = FrappeClient(get_translator_url())
-	return translator.post_api("translator.api.get_source_additional_info", params=locals())
-
-
-@frappe.whitelist()
 def get_contributions(language):
 	return frappe.get_all(
 		"Translation",
@@ -1255,22 +1278,6 @@ def get_contributions(language):
 			"contributed": 1,
 		},
 	)
-
-
-@frappe.whitelist()
-def get_contribution_status(message_id):
-	from frappe.frappeclient import FrappeClient
-
-	doc = frappe.get_doc("Translation", message_id)
-	translator = FrappeClient(get_translator_url())
-	contributed_translation = translator.get_api(
-		"translator.api.get_contribution_status", params={"translation_id": doc.contribution_docname}
-	)
-	return contributed_translation
-
-
-def get_translator_url():
-	return frappe.get_hooks()["translator_url"][0]
 
 
 @frappe.whitelist(allow_guest=True)

@@ -1,3 +1,4 @@
+import json
 import sys
 from contextlib import contextmanager
 from random import choice
@@ -6,13 +7,14 @@ from time import time
 from unittest.mock import patch
 
 import requests
+from filetype import guess_mime
 from semantic_version import Version
 from werkzeug.test import TestResponse
 
 import frappe
 from frappe.installer import update_site_config
 from frappe.tests.utils import FrappeTestCase, patch_hooks
-from frappe.utils import get_site_url, get_test_client
+from frappe.utils import cint, get_site_url, get_test_client
 
 try:
 	_site = frappe.local.site
@@ -265,10 +267,18 @@ class TestMethodAPI(FrappeAPITestCase):
 		user = frappe.get_doc("User", "Administrator")
 		api_key, api_secret = user.api_key, user.get_password("api_secret")
 		authorization_token = f"{api_key}:{api_secret}"
-		response = self.get("/api/method/frappe.auth.get_logged_user")
+		response = self.get(f"{self.METHOD_PATH}/frappe.auth.get_logged_user")
 
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.json["message"], "Administrator")
+
+		authorization_token = f"{api_key}:INCORRECT"
+		response = self.get(f"{self.METHOD_PATH}/frappe.auth.get_logged_user")
+		self.assertEqual(response.status_code, 401)
+
+		authorization_token = f"NonExistentKey:INCORRECT"
+		response = self.get(f"{self.METHOD_PATH}/frappe.auth.get_logged_user")
+		self.assertEqual(response.status_code, 401)
 
 		authorization_token = None
 
@@ -325,3 +335,58 @@ def before_request(*args, **kwargs):
 
 def after_request(*args, **kwargs):
 	_test_REQ_HOOK["after_request"] = time()
+
+
+class TestResponse(FrappeAPITestCase):
+	def test_generate_pdf(self):
+		response = self.get(
+			f"/api/method/frappe.utils.print_format.download_pdf",
+			{"sid": self.sid, "doctype": "User", "name": "Guest"},
+		)
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.headers["content-type"], "application/pdf")
+		self.assertGreater(cint(response.headers["content-length"]), 0)
+
+		self.assertEqual(guess_mime(response.data), "application/pdf")
+
+	def test_binary_and_csv_response(self):
+		def download_template(file_type):
+			filters = json.dumps({})
+			fields = json.dumps({"User": ["name"]})
+			return self.post(
+				"/api/method/frappe.core.doctype.data_import.data_import.download_template",
+				{
+					"sid": self.sid,
+					"doctype": "User",
+					"export_fields": fields,
+					"export_filters": filters,
+					"file_type": file_type,
+				},
+			)
+
+		response = download_template("Excel")
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.headers["content-type"], "application/octet-stream")
+		self.assertGreater(cint(response.headers["content-length"]), 0)
+		self.assertEqual(
+			guess_mime(response.data), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+		)
+
+		response = download_template("CSV")
+		self.assertEqual(response.status_code, 200)
+		self.assertIn("text/csv", response.headers["content-type"])
+		self.assertGreater(cint(response.headers["content-length"]), 0)
+
+		from frappe.utils.response import build_response
+
+		filename = "دفتر الأستاذ العام"
+		encoded_filename = filename.encode("utf-8").decode("unicode-escape", "ignore") + ".xlsx"
+		frappe.response["type"] = "binary"
+		frappe.response["filecontent"] = "content"
+		frappe.response["filename"] = filename + ".xlsx"
+
+		response = build_response("binary")
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.headers["content-type"], "application/octet-stream")
+		self.assertGreater(cint(response.headers["content-length"]), 0)
+		self.assertEqual(response.headers["content-disposition"], f'filename="{encoded_filename}"')
