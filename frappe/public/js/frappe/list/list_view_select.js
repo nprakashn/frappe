@@ -129,12 +129,14 @@ frappe.views.ListViewSelect = class ListViewSelect {
 		};
 
 		frappe.views.view_modes.forEach((view) => {
-			if (this.current_view !== view && views[view].condition) {
-				this.add_view_to_menu(view, views[view].action);
-			}
+			if (!frappe.user.has_role("Driver") || frappe.session.user == "Administrator") {
+				if (this.current_view !== view && views[view].condition) {
+					this.add_view_to_menu(view, views[view].action);
+				}
 
-			if (this.current_view == view) {
-				views[view].current_view_handler && views[view].current_view_handler();
+				if (this.current_view == view) {
+					views[view].current_view_handler && views[view].current_view_handler();
+				}
 			}
 		});
 	}
