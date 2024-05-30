@@ -355,7 +355,7 @@ export default class Grid {
 		});
 
 		this.header_search = new GridRow({
-			parent: $(this.parent).find(".grid-heading-row"),
+			// parent: $(this.parent).find(".grid-heading-row"),
 			parent_df: this.df,
 			docfields: this.docfields,
 			frm: this.frm,
