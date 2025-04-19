@@ -235,6 +235,8 @@ def get_list(
 				filters["name"] = ("like", "%" + txt + "%")
 			else:
 				filters.append([doctype, "name", "like", "%" + txt + "%"])
+				
+	filters = filters.update({"docstatus": ("in", [0,1])})
 
 	return frappe.get_list(
 		doctype,
